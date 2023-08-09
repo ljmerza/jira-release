@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tickets</title>
+</head>
+<body>
+    <div id="toast" class="toast"></div>
+
+    <button onclick="generateBBCode()">Generate BBCode List</button>
+    <pre id="bbcode-output"></pre>
+    <button id='clipboard' onclick="copyToClipboard()">Copy to Clipboard</button>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Key</th>
+                <th>Summary</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Assignee</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in tickets %}
+            <tr>
+                <td>
+                    <a href="{{ JIRA_URL }}/browse/{{ ticket.key }}" target="_blank">{{ ticket.key }}</a>
+                </td>
+                <td class="summary-column">
+                    <input class='ticket-summary-input' data-ticket-id="{{ ticket.key }}" type="text" id="{{ ticket.key }}_summary" value="{{ ticket.summary }}" />
+                    <button onclick="updateTitle('{{ ticket.key }}')">Update</button>
+                </td>
+                <td class="description-column">{{ ticket.description }}</td>
+                <td>{{ ticket.status }}</td>
+                <td>{{ ticket.assignee }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        document.querySelectorAll('.ticket-summary-input').forEach(input => {
+            input.addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    const ticketId = this.getAttribute('data-ticket-id'); // Assuming you've stored ticket ID in a data attribute.
+                    updateTitle(ticketId, this.value);
+                }
+            });
+        });
+
+        function updateTitle(ticketKey, newTitle) {
+            if(!newTitle) {
+                const summaryInput = document.getElementById(ticketKey + '_summary');
+                newTitle = summaryInput.value;
+            }
+            
+            fetch(`/tickets/${ticketKey}/title?new_title=${newTitle}`, {
+                method: 'PUT'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('Title updated successfully!');
+                } else {
+                    showToast('Error updating title.');
+                }
+            })
+            .catch(error => {
+                showToast('Error: ' + error);
+            });
+        }
+
+        function generateBBCode() {
+            const summaryElements = document.querySelectorAll('input[type="text"]');
+            let bbcodeList = "[list]\n";
+            
+            summaryElements.forEach(element => {
+                bbcodeList += "[*]" + element.value + "\n";
+            });
+
+            bbcodeList += "[/list]";
+            
+            // Display the BBCode in the bbcode-output div
+            const outputDiv = document.getElementById('bbcode-output');
+            outputDiv.textContent = bbcodeList;
+        }
+
+        function copyToClipboard() {
+            const textarea = document.createElement('textarea');
+            textarea.textContent = document.getElementById('bbcode-output').textContent;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('BBCode copied to clipboard!');
+            } catch (err) {
+                showToast('Failed to copy BBCode. Please manually copy the code.');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.visibility = 'visible';
+            toast.style.opacity = '1';
+
+            setTimeout(() => {
+                toast.style.visibility = 'hidden';
+                toast.style.opacity = '0';
+            }, 3000);
+        }
+
+    </script>
+
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        input {
+            width: 80%;
+        }
+
+        .summary-column {
+            min-width: 500px;  /* Adjust the value as needed */
+        }
+
+        .description-column {
+            max-width: 500px;  /* Adjust the value as needed */
+        }
+
+        .toast {
+            visibility: hidden;
+            max-width: 250px;
+            height: 50px;
+            line-height: 50px;
+            margin-left: -125px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 2px;
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            bottom: 30px;
+            font-size: 17px;
+            padding: 2px 16px;
+            transition: visibility 0.5s, opacity 0.5s linear;
+            opacity: 0;
+        }
+
+        #clipboard {
+            margin-bottom: 20px;
+        }
+
+    </style>
+
+</body>
+</html>
