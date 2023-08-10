@@ -37,7 +37,7 @@ source venv/bin/activate
 - **Windows**:
 
 ```bash
-.\venv\Scripts\activate
+source ./venv/Scripts/activate
 ```
 
 You'll know you're in the virtual environment when you see `(venv)` before your command prompt.
